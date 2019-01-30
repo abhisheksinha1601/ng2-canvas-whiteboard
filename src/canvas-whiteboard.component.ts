@@ -8,22 +8,22 @@ import {
     OnInit,
     OnChanges, OnDestroy, AfterViewInit, NgZone, ChangeDetectorRef
 } from '@angular/core';
-import {CanvasWhiteboardUpdate, CanvasWhiteboardUpdateType} from "./canvas-whiteboard-update.model";
-import {DEFAULT_STYLES} from "./template";
-import {CanvasWhiteboardService} from "./canvas-whiteboard.service";
-import {CanvasWhiteboardOptions} from "./canvas-whiteboard-options";
-import {CanvasWhiteboardShape} from "./shapes/canvas-whiteboard-shape";
-import {CanvasWhiteboardPoint} from "./canvas-whiteboard-point";
-import {CanvasWhiteboardShapeService, INewCanvasWhiteboardShape} from "./shapes/canvas-whiteboard-shape.service";
-import {CanvasWhiteboardShapeOptions} from "./shapes/canvas-whiteboard-shape-options";
-import {fromEvent, Subscription} from "rxjs/index";
-import {debounceTime, distinctUntilChanged} from "rxjs/operators";
-import {cloneDeep} from "lodash";
+import { CanvasWhiteboardUpdate, CanvasWhiteboardUpdateType } from "./canvas-whiteboard-update.model";
+import { DEFAULT_STYLES } from "./template";
+import { CanvasWhiteboardService } from "./canvas-whiteboard.service";
+import { CanvasWhiteboardOptions } from "./canvas-whiteboard-options";
+import { CanvasWhiteboardShape } from "./shapes/canvas-whiteboard-shape";
+import { CanvasWhiteboardPoint } from "./canvas-whiteboard-point";
+import { CanvasWhiteboardShapeService, INewCanvasWhiteboardShape } from "./shapes/canvas-whiteboard-shape.service";
+import { CanvasWhiteboardShapeOptions } from "./shapes/canvas-whiteboard-shape-options";
+import { fromEvent, Subscription } from "rxjs/index";
+import { debounceTime, distinctUntilChanged } from "rxjs/operators";
+import { cloneDeep } from "lodash";
 
 @Component({
     selector: 'canvas-whiteboard',
     template:
-            `
+        `
         <div class="canvas_wrapper_div">
             <div class="canvas_whiteboard_buttons">
                 <canvas-whiteboard-shape-selector *ngIf="shapeSelectorEnabled"
@@ -174,9 +174,9 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     canvasWhiteboardShapePreviewOptions: CanvasWhiteboardShapeOptions;
 
     constructor(private ngZone: NgZone,
-                private _changeDetector: ChangeDetectorRef,
-                private _canvasWhiteboardService: CanvasWhiteboardService,
-                private _canvasWhiteboardShapeService: CanvasWhiteboardShapeService) {
+        private _changeDetector: ChangeDetectorRef,
+        private _canvasWhiteboardService: CanvasWhiteboardService,
+        private _canvasWhiteboardShapeService: CanvasWhiteboardShapeService) {
         this._shapesMap = new Map<string, CanvasWhiteboardShape>();
         this._incompleteShapesMap = new Map<string, CanvasWhiteboardShape>();
         this.canvasWhiteboardShapePreviewOptions = this.generateShapePreviewOptions();
@@ -379,20 +379,21 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
      * @return Emits a value when the clearing is finished
      */
     private _redrawBackground(callbackFn?: any): void {
-        if (this.context) {
-            if (this.imageUrl) {
-                this._loadImage(() => {
-                    this.context.save();
-                    this._drawImage(this.context, this._imageElement, 0, 0, this.context.canvas.width, this.context.canvas.height, 0.5, 0.5);
-                    this.context.restore();
-                    this._drawMissingUpdates();
-                    callbackFn && callbackFn();
-                });
-            } else {
-                this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
-                this._drawStartingColor();
+        if (!this.context) {
+            return;
+        }
+        if (this.imageUrl) {
+            this._loadImage(() => {
+                this.context.save();
+                this._drawImage(this.context, this._imageElement, 0, 0, this.context.canvas.width, this.context.canvas.height, 0.5, 0.5);
+                this.context.restore();
+                this._drawMissingUpdates();
                 callbackFn && callbackFn();
-            }
+            });
+        } else {
+            this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+            this._drawStartingColor();
+            callbackFn && callbackFn();
         }
     }
 
@@ -603,6 +604,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
             case 'mousemove':
             case 'touchmove':
                 if (!this._clientDragging) {
+                    // TODO show comment
                     return;
                 }
                 updateType = CanvasWhiteboardUpdateType.DRAG;
@@ -797,7 +799,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
         if (!update.selectedShapeOptions) {
             //Make a deep copy since we don't want some Shape implementation to change something by accident
-            update.selectedShapeOptions = Object.assign(new CanvasWhiteboardShapeOptions(), this.generateShapePreviewOptions(), {lineWidth: this.lineWidth});
+            update.selectedShapeOptions = Object.assign(new CanvasWhiteboardShapeOptions(), this.generateShapePreviewOptions(), { lineWidth: this.lineWidth });
         }
     }
 
@@ -834,14 +836,17 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
     /**
      * Draws an Array of Updates on the canvas.
-     *
      * @param updates The array with Updates.
+     * @param pushToStack Whether or not push the updates to undo stack
      */
-    drawUpdates(updates: CanvasWhiteboardUpdate[]): void {
+    drawUpdates(updates: CanvasWhiteboardUpdate[], pushToStack?: boolean): void {
         if (this._canDraw) {
-            this._drawMissingUpdates();
+            this._drawMissingUpdates(pushToStack);
             updates.forEach((update: CanvasWhiteboardUpdate) => {
                 this._draw(update);
+                if (pushToStack && this._undoStack.indexOf(update.UUID) == -1) {
+                    this._undoStack.push(update.UUID);
+                }
             });
         } else {
             this._updatesNotDrawn = this._updatesNotDrawn.concat(updates);
@@ -851,13 +856,16 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     /**
      * Draw any missing updates that were received before the image was loaded
      */
-    private _drawMissingUpdates(): void {
+    private _drawMissingUpdates(pushToStack?: boolean): void {
         if (this._updatesNotDrawn.length > 0) {
             let updatesToDraw = this._updatesNotDrawn;
             this._updatesNotDrawn = [];
 
             updatesToDraw.forEach((update: CanvasWhiteboardUpdate) => {
                 this._draw(update);
+                if (pushToStack && this._undoStack.indexOf(update.UUID) == -1) {
+                    this._undoStack.push(update.UUID);
+                }
             });
         }
     }
@@ -1079,9 +1087,19 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     /**
      * Returns a deep copy of the current drawing history for the canvas.
      * The deep copy is returned because we don't want anyone to mutate the current history
+     * @param onlyVisibleDrawings Set to true if you want to get only visible shapes in the canvas
      */
-    getDrawingHistory(): CanvasWhiteboardUpdate[] {
-        return cloneDeep(this._updateHistory);
+    getDrawingHistory(onlyVisibleDrawings?: boolean): CanvasWhiteboardUpdate[] {
+        if (!onlyVisibleDrawings) {
+            return cloneDeep(this._updateHistory);
+        }
+        let visibleShapes = [];
+        cloneDeep(this._updateHistory).forEach(update => {
+            if (this._undoStack.indexOf(update.UUID) > -1) {
+                visibleShapes.push(update);
+            }
+        });
+        return visibleShapes;
     }
 
     /**
