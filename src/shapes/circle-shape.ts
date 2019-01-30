@@ -9,6 +9,7 @@ export class CircleShape extends CanvasWhiteboardShape {
     constructor(positionPoint?: CanvasWhiteboardPoint, options?: CanvasWhiteboardShapeOptions, radius?: number) {
         super(positionPoint, options);
         this.radius = radius || 0;
+        this.shapeType = 'fill';
     }
 
     getShapeName(): string {

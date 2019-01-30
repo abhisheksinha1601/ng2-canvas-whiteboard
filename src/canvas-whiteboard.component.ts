@@ -18,7 +18,7 @@ import { CanvasWhiteboardShapeService, INewCanvasWhiteboardShape } from "./shape
 import { CanvasWhiteboardShapeOptions } from "./shapes/canvas-whiteboard-shape-options";
 import { fromEvent, Subscription } from "rxjs/index";
 import { debounceTime, distinctUntilChanged } from "rxjs/operators";
-import { cloneDeep } from "lodash";
+import { cloneDeep, Dictionary } from "lodash";
 
 @Component({
     selector: 'canvas-whiteboard',
@@ -53,26 +53,26 @@ import { cloneDeep } from "lodash";
                 <button *ngIf="drawButtonEnabled" (click)="toggleDrawingEnabled()"
                         [class.canvas_whiteboard_button-draw_animated]="getDrawingEnabled()"
                         class="canvas_whiteboard_button canvas_whiteboard_button-draw" type="button">
-                    <i [class]="drawButtonClass" aria-hidden="true"></i> {{drawButtonText}}
+                    <i [class]="drawButtonClass" aria-hidden="true">{{drawButtonText}}</i> 
                 </button>
 
                 <button *ngIf="clearButtonEnabled" (click)="clearCanvasLocal()" type="button"
                         class="canvas_whiteboard_button canvas_whiteboard_button-clear">
-                    <i [class]="clearButtonClass" aria-hidden="true"></i> {{clearButtonText}}
+                    <i [class]="clearButtonClass" aria-hidden="true">{{clearButtonText}}</i> 
                 </button>
 
                 <button *ngIf="undoButtonEnabled" (click)="undoLocal()" type="button"
                         class="canvas_whiteboard_button canvas_whiteboard_button-undo">
-                    <i [class]="undoButtonClass" aria-hidden="true"></i> {{undoButtonText}}
+                    <i [class]="undoButtonClass" aria-hidden="true">{{undoButtonText}}</i> 
                 </button>
 
                 <button *ngIf="redoButtonEnabled" (click)="redoLocal()" type="button"
                         class="canvas_whiteboard_button canvas_whiteboard_button-redo">
-                    <i [class]="redoButtonClass" aria-hidden="true"></i> {{redoButtonText}}
+                    <i [class]="redoButtonClass" aria-hidden="true">{{redoButtonText}}</i> 
                 </button>
                 <button *ngIf="saveDataButtonEnabled" (click)="saveLocal()" type="button"
                         class="canvas_whiteboard_button canvas_whiteboard_button-save">
-                    <i [class]="saveDataButtonClass" aria-hidden="true"></i> {{saveDataButtonText}}
+                    <i [class]="saveDataButtonClass" aria-hidden="true">{{saveDataButtonText}}</i> 
                 </button>
             </div>
             <canvas #canvas class="canvas_whiteboard"></canvas>
@@ -172,6 +172,9 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
     selectedShapeConstructor: INewCanvasWhiteboardShape<CanvasWhiteboardShape>;
     canvasWhiteboardShapePreviewOptions: CanvasWhiteboardShapeOptions;
+
+    private _shapeComments: Dictionary<{ shapeType: 'fill' | 'line', commentHistory: { data: string, commentedOn: Date }[] }> = {};
+    private _commentVisible: boolean = false;
 
     constructor(private ngZone: NgZone,
         private _changeDetector: ChangeDetectorRef,
@@ -567,6 +570,22 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     canvasUserEvents(event: any): void {
         //Ignore all if we didn't click the _draw! button or the image did not load
         if (!this.drawingEnabled || !this._canDraw) {
+            if (!this.drawingEnabled && !this._clientDragging) {
+                switch (event.type) {
+                    case 'mousemove':
+                    case 'touchmove':
+                        // TODO show comment
+                        let eventPosition: CanvasWhiteboardPoint = this._getCanvasEventPosition(event);
+                        this.showComment(eventPosition);
+                        this._commentVisible = true;
+                        break;
+                    case 'touchcancel':
+                    case 'mouseup':
+                    case 'touchend':
+                    case 'mouseout':
+                        this._commentVisible = false;
+                }
+            }
             return;
         }
 
@@ -604,7 +623,6 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
             case 'mousemove':
             case 'touchmove':
                 if (!this._clientDragging) {
-                    // TODO show comment
                     return;
                 }
                 updateType = CanvasWhiteboardUpdateType.DRAG;
@@ -616,6 +634,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
                 this._clientDragging = false;
                 updateType = CanvasWhiteboardUpdateType.STOP;
                 this._undoStack.push(this._lastUUID);
+                this._addCommentForShape();
                 break;
         }
 
@@ -624,6 +643,47 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
         this._draw(update);
         this._prepareToSendUpdate(update);
+    }
+
+    showComment(event: CanvasWhiteboardPoint) {
+        console.log(event);
+    }
+
+    /**
+     * Opens a dialog for commenting on shape
+     * @param uuid 
+     */
+    private _addCommentForShape() {
+        let shapeType = (new this.selectedShapeConstructor()).shapeType;
+        // TODO open dialog and ask for comment
+        let comment = prompt("Enter comment");
+        // TODO save comment in comment dict where key=UUID
+        if (!this._shapeComments[this._lastUUID]) {
+            if (!this._shapeComments[this._lastUUID]) {
+                this._shapeComments[this._lastUUID] = { shapeType, commentHistory: [] }
+            }
+            this._shapeComments[this._lastUUID].commentHistory.push({
+                data: comment,
+                commentedOn: new Date()
+            });
+        }
+    }
+
+    /**
+     * Get comments on drawings
+     * @param onlyVisibleDrawingComments 
+     */
+    getShapeComments(onlyVisibleDrawingComments?: boolean) {
+        if (!onlyVisibleDrawingComments) {
+            return this._shapeComments;
+        }
+        let visibleShapeComments = {};
+        for (let uuid in this._shapeComments) {
+            if (this._undoStack.indexOf(uuid) > -1) {
+                visibleShapeComments[uuid] = this._shapeComments[uuid];
+            }
+        }
+        return visibleShapeComments;
     }
 
     /**
@@ -768,7 +828,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
     private _swapCompletedShapeToActualCanvas(shape: CanvasWhiteboardShape) {
         this._drawIncompleteShapes();
-        if (shape.isVisible) {
+        if (shape && shape.isVisible) {
             shape.draw(this.context);
         }
     }

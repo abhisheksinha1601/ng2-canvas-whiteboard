@@ -2,6 +2,7 @@ import { CanvasWhiteboardShapeOptions } from "./canvas-whiteboard-shape-options"
 import { CanvasWhiteboardPoint } from "../canvas-whiteboard-point";
 import { CanvasWhiteboardUpdate } from "../canvas-whiteboard-update.model";
 export declare abstract class CanvasWhiteboardShape {
+    shapeType: 'fill' | 'line';
     isVisible: boolean;
     protected positionPoint: CanvasWhiteboardPoint;
     protected options: CanvasWhiteboardShapeOptions;

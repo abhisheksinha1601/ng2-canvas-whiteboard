@@ -15,7 +15,7 @@ import {CanvasWhiteboardShapeOptions} from "./canvas-whiteboard-shape-options";
 @Component({
     selector: "canvas-whiteboard-shape-preview",
     template: `
-        <canvas #canvasWhiteboardShapePreview width="50px" height="50px"
+        <canvas #canvasWhiteboardShapePreview width="40px" height="40px"
                 class="canvas-whiteboard-shape-preview-canvas"></canvas>
     `,
     styles: [`

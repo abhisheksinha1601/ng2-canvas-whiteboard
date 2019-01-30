@@ -11,6 +11,7 @@ export class LineShape extends CanvasWhiteboardShape {
                 endPosition?: CanvasWhiteboardPoint) {
         super(positionPoint, options);
         this.endPosition = endPosition || new CanvasWhiteboardPoint(this.positionPoint.x, this.positionPoint.y);
+        this.shapeType = 'line';
     }
 
     getShapeName(): string {

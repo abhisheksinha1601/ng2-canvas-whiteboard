@@ -1,19 +1,20 @@
-import {CanvasWhiteboardShape} from "./canvas-whiteboard-shape";
-import {CanvasWhiteboardShapeOptions} from "./canvas-whiteboard-shape-options";
-import {CanvasWhiteboardPoint} from "../canvas-whiteboard-point";
-import {CanvasWhiteboardUpdate} from "../canvas-whiteboard-update.model";
+import { CanvasWhiteboardShape } from "./canvas-whiteboard-shape";
+import { CanvasWhiteboardShapeOptions } from "./canvas-whiteboard-shape-options";
+import { CanvasWhiteboardPoint } from "../canvas-whiteboard-point";
+import { CanvasWhiteboardUpdate } from "../canvas-whiteboard-update.model";
 
 export class StarShape extends CanvasWhiteboardShape {
     radius: number;
     spikes: number;
 
     constructor(positionPoint?: CanvasWhiteboardPoint,
-                options?: CanvasWhiteboardShapeOptions,
-                radius?: number,
-                spikes?: number) {
+        options?: CanvasWhiteboardShapeOptions,
+        radius?: number,
+        spikes?: number) {
         super(positionPoint, options);
         this.radius = radius || 0;
         this.spikes = spikes || 5;
+        this.shapeType = 'fill';
     }
 
     getShapeName(): string {

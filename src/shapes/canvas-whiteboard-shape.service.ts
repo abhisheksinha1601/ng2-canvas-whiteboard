@@ -25,8 +25,8 @@ export class CanvasWhiteboardShapeService {
             LineShape,
             RectangleShape,
             CircleShape,
-            StarShape,
-            SmileyShape
+            // StarShape,
+            // SmileyShape
         ]);
         this.registeredShapes$ = this._registeredShapesSubject.asObservable();
     }

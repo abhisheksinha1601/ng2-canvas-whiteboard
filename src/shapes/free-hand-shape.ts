@@ -9,6 +9,7 @@ export class FreeHandShape extends CanvasWhiteboardShape {
     constructor(positionPoint?: CanvasWhiteboardPoint, options?: CanvasWhiteboardShapeOptions) {
         super(positionPoint, options);
         this.linePositions = [];
+        this.shapeType = 'line';
     }
 
     getShapeName(): string {

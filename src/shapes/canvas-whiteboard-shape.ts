@@ -1,8 +1,9 @@
-import {CanvasWhiteboardShapeOptions} from "./canvas-whiteboard-shape-options";
-import {CanvasWhiteboardPoint} from "../canvas-whiteboard-point";
-import {CanvasWhiteboardUpdate} from "../canvas-whiteboard-update.model";
+import { CanvasWhiteboardShapeOptions } from "./canvas-whiteboard-shape-options";
+import { CanvasWhiteboardPoint } from "../canvas-whiteboard-point";
+import { CanvasWhiteboardUpdate } from "../canvas-whiteboard-update.model";
 
 export abstract class CanvasWhiteboardShape {
+    shapeType: 'fill' | 'line';
     isVisible: boolean;
     protected positionPoint: CanvasWhiteboardPoint;
     protected options: CanvasWhiteboardShapeOptions;

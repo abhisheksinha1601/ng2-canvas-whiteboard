@@ -12,6 +12,7 @@ export class SmileyShape extends CanvasWhiteboardShape {
         this.options.fillStyle = this.options.fillStyle || "yellow";
 
         this.radius = radius || 0;
+        this.shapeType = 'fill';
     }
 
     getShapeName(): string {
