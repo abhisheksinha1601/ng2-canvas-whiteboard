@@ -7,9 +7,9 @@
   "es2015": "./modules/ng2-canvas-whiteboard.js",
   "scripts": {
     "build": "node build.js",
+    "transpile": "ngc -p tsconfig-build.json",
     "pack-lib": "npm pack ./dist",
-    "publish-lib": "npm publish ./dist",
-    "transpile": "ngc -p ./tsconfig.json"
+    "publish-lib": "npm publish ./dist"
   },
   "typings": "./ng2-canvas-whiteboard.d.ts",
   "repository": {

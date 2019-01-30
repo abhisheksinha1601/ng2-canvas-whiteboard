@@ -6,3 +6,4 @@ npm-debug.log
 *.map
 /docs/build
 ngfactory
+dist

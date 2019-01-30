@@ -18,7 +18,7 @@ var canvas_whiteboard_shape_service_1 = require("./shapes/canvas-whiteboard-shap
 var canvas_whiteboard_shape_options_1 = require("./shapes/canvas-whiteboard-shape-options");
 var index_1 = require("rxjs/index");
 var operators_1 = require("rxjs/operators");
-var _ = require("lodash");
+var lodash_1 = require("lodash");
 var CanvasWhiteboardComponent = /** @class */ (function () {
     function CanvasWhiteboardComponent(ngZone, _changeDetector, _canvasWhiteboardService, _canvasWhiteboardShapeService) {
         this.ngZone = ngZone;
@@ -296,21 +296,22 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
      */
     CanvasWhiteboardComponent.prototype._redrawBackground = function (callbackFn) {
         var _this = this;
-        if (this.context) {
-            if (this.imageUrl) {
-                this._loadImage(function () {
-                    _this.context.save();
-                    _this._drawImage(_this.context, _this._imageElement, 0, 0, _this.context.canvas.width, _this.context.canvas.height, 0.5, 0.5);
-                    _this.context.restore();
-                    _this._drawMissingUpdates();
-                    callbackFn && callbackFn();
-                });
-            }
-            else {
-                this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
-                this._drawStartingColor();
+        if (!this.context) {
+            return;
+        }
+        if (this.imageUrl) {
+            this._loadImage(function () {
+                _this.context.save();
+                _this._drawImage(_this.context, _this._imageElement, 0, 0, _this.context.canvas.width, _this.context.canvas.height, 0.5, 0.5);
+                _this.context.restore();
+                _this._drawMissingUpdates();
                 callbackFn && callbackFn();
-            }
+            });
+        }
+        else {
+            this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+            this._drawStartingColor();
+            callbackFn && callbackFn();
         }
     };
     CanvasWhiteboardComponent.prototype._drawStartingColor = function () {
@@ -498,6 +499,7 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
             case 'mousemove':
             case 'touchmove':
                 if (!this._clientDragging) {
+                    // TODO show comment
                     return;
                 }
                 updateType = canvas_whiteboard_update_model_1.CanvasWhiteboardUpdateType.DRAG;
@@ -663,7 +665,7 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
     };
     CanvasWhiteboardComponent.prototype._addCurrentShapeDataToAnUpdate = function (update) {
         if (!update.selectedShape) {
-            update.selectedShape = this.selectedShapeConstructor.name;
+            update.selectedShape = (new this.selectedShapeConstructor).getShapeName();
         }
         if (!update.selectedShapeOptions) {
             //Make a deep copy since we don't want some Shape implementation to change something by accident
@@ -690,7 +692,7 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
      */
     CanvasWhiteboardComponent.prototype._prepareUpdateForBatchDispatch = function (update) {
         var _this = this;
-        this._batchUpdates.push(_.cloneDeep(update));
+        this._batchUpdates.push(lodash_1.cloneDeep(update));
         if (!this._updateTimeout) {
             this._updateTimeout = setTimeout(function () {
                 _this.onBatchUpdate.emit(_this._batchUpdates);
@@ -702,15 +704,18 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
     ;
     /**
      * Draws an Array of Updates on the canvas.
-     *
      * @param updates The array with Updates.
+     * @param pushToStack Whether or not push the updates to undo stack
      */
-    CanvasWhiteboardComponent.prototype.drawUpdates = function (updates) {
+    CanvasWhiteboardComponent.prototype.drawUpdates = function (updates, pushToStack) {
         var _this = this;
         if (this._canDraw) {
-            this._drawMissingUpdates();
+            this._drawMissingUpdates(pushToStack);
             updates.forEach(function (update) {
                 _this._draw(update);
+                if (pushToStack && _this._undoStack.indexOf(update.UUID) == -1) {
+                    _this._undoStack.push(update.UUID);
+                }
             });
         }
         else {
@@ -721,13 +726,16 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
     /**
      * Draw any missing updates that were received before the image was loaded
      */
-    CanvasWhiteboardComponent.prototype._drawMissingUpdates = function () {
+    CanvasWhiteboardComponent.prototype._drawMissingUpdates = function (pushToStack) {
         var _this = this;
         if (this._updatesNotDrawn.length > 0) {
             var updatesToDraw = this._updatesNotDrawn;
             this._updatesNotDrawn = [];
             updatesToDraw.forEach(function (update) {
                 _this._draw(update);
+                if (pushToStack && _this._undoStack.indexOf(update.UUID) == -1) {
+                    _this._undoStack.push(update.UUID);
+                }
             });
         }
     };
@@ -821,18 +829,16 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
      If this argument is anything else, the default value for image quality is used. Other arguments are ignored.
      */
     CanvasWhiteboardComponent.prototype.generateCanvasBlob = function (callbackFn, returnedDataType, returnedDataQuality) {
-        var _this = this;
         if (returnedDataType === void 0) { returnedDataType = "image/png"; }
         if (returnedDataQuality === void 0) { returnedDataQuality = 1; }
-        var toBlobMethod;
-        if (typeof this.context.canvas.toBlob !== "undefined") {
-            toBlobMethod = this.context.canvas.toBlob.bind(this.context.canvas);
-        }
-        else if (typeof this.context.canvas.msToBlob !== "undefined") {
-            toBlobMethod = function (callback) {
-                callback && callback(_this.context.canvas.msToBlob());
-            };
-        }
+        var toBlobMethod = this.context.canvas.toBlob.bind(this.context.canvas);
+        // if (typeof this.context.canvas.toBlob !== "undefined") {
+        //     toBlobMethod = this.context.canvas.toBlob.bind(this.context.canvas);
+        // } else if (typeof this.context.canvas.msToBlob !== "undefined") {
+        //     toBlobMethod = (callback) => {
+        //         callback && callback(this.context.canvas.msToBlob());
+        //     };
+        // }
         toBlobMethod && toBlobMethod(function (blob) {
             callbackFn && callbackFn(blob, returnedDataType);
         }, returnedDataType, returnedDataQuality);
@@ -947,9 +953,20 @@ var CanvasWhiteboardComponent = /** @class */ (function () {
     /**
      * Returns a deep copy of the current drawing history for the canvas.
      * The deep copy is returned because we don't want anyone to mutate the current history
+     * @param onlyVisibleDrawings Set to true if you want to get only visible shapes in the canvas
      */
-    CanvasWhiteboardComponent.prototype.getDrawingHistory = function () {
-        return _.cloneDeep(this._updateHistory);
+    CanvasWhiteboardComponent.prototype.getDrawingHistory = function (onlyVisibleDrawings) {
+        var _this = this;
+        if (!onlyVisibleDrawings) {
+            return lodash_1.cloneDeep(this._updateHistory);
+        }
+        var visibleShapes = [];
+        lodash_1.cloneDeep(this._updateHistory).forEach(function (update) {
+            if (_this._undoStack.indexOf(update.UUID) > -1) {
+                visibleShapes.push(update);
+            }
+        });
+        return visibleShapes;
     };
     /**
      * Unsubscribe from a given subscription if it is active
