@@ -6,7 +6,6 @@ import { CanvasWhiteboardShape } from "./shapes/canvas-whiteboard-shape";
 import { CanvasWhiteboardPoint } from "./canvas-whiteboard-point";
 import { CanvasWhiteboardShapeService, INewCanvasWhiteboardShape } from "./shapes/canvas-whiteboard-shape.service";
 import { CanvasWhiteboardShapeOptions } from "./shapes/canvas-whiteboard-shape-options";
-import { Dictionary } from "lodash";
 export declare class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
     private ngZone;
     private _changeDetector;
@@ -74,8 +73,8 @@ export declare class CanvasWhiteboardComponent implements OnInit, AfterViewInit,
     private _registeredShapesSubscription;
     selectedShapeConstructor: INewCanvasWhiteboardShape<CanvasWhiteboardShape>;
     canvasWhiteboardShapePreviewOptions: CanvasWhiteboardShapeOptions;
-    private _shapeComments;
-    private _commentVisible;
+    onShapeDrawn: EventEmitter<string>;
+    onMouseMove: EventEmitter<CanvasWhiteboardPoint>;
     constructor(ngZone: NgZone, _changeDetector: ChangeDetectorRef, _canvasWhiteboardService: CanvasWhiteboardService, _canvasWhiteboardShapeService: CanvasWhiteboardShapeService);
     /**
      * Initialize the canvas drawing context. If we have an aspect ratio set up, the canvas will resize
@@ -232,23 +231,6 @@ export declare class CanvasWhiteboardComponent implements OnInit, AfterViewInit,
      *
      */
     canvasUserEvents(event: any): void;
-    showComment(event: CanvasWhiteboardPoint): void;
-    /**
-     * Opens a dialog for commenting on shape
-     * @param uuid
-     */
-    private _addCommentForShape;
-    /**
-     * Get comments on drawings
-     * @param onlyVisibleDrawingComments
-     */
-    getShapeComments(onlyVisibleDrawingComments?: boolean): Dictionary<{
-        shapeType: "fill" | "line";
-        commentHistory: {
-            data: string;
-            commentedOn: Date;
-        }[];
-    }>;
     /**
      * Get the coordinates (x,y) from a given event
      * If it is a touch event, get the touch positions
@@ -424,7 +406,6 @@ export declare class CanvasWhiteboardComponent implements OnInit, AfterViewInit,
      */
     private _unsubscribe;
     private _generateUUID;
-    private _random4;
     /**
      * Unsubscribe from the service observables
      */

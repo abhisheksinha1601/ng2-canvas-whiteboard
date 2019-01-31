@@ -11,7 +11,8 @@
     "inlineSources": false,
     "target": "es2015",
     "skipLibCheck": true,
-    "lib": ["es2015", "dom"]
+    "lib": ["es2015", "dom"],
+    "allowSyntheticDefaultImports": true
   },
   "exclude": ["node_modules", "example", "dist"],
   "files": ["public_api.ts"],

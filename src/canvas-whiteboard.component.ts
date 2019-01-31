@@ -18,7 +18,8 @@ import { CanvasWhiteboardShapeService, INewCanvasWhiteboardShape } from "./shape
 import { CanvasWhiteboardShapeOptions } from "./shapes/canvas-whiteboard-shape-options";
 import { fromEvent, Subscription } from "rxjs/index";
 import { debounceTime, distinctUntilChanged } from "rxjs/operators";
-import { cloneDeep, Dictionary } from "lodash";
+import { cloneDeep } from "lodash";
+import nanoid from "nanoid";
 
 @Component({
     selector: 'canvas-whiteboard',
@@ -173,8 +174,8 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     selectedShapeConstructor: INewCanvasWhiteboardShape<CanvasWhiteboardShape>;
     canvasWhiteboardShapePreviewOptions: CanvasWhiteboardShapeOptions;
 
-    private _shapeComments: Dictionary<{ shapeType: 'fill' | 'line', commentHistory: { data: string, commentedOn: Date }[] }> = {};
-    private _commentVisible: boolean = false;
+    @Output() onShapeDrawn = new EventEmitter<string>();
+    @Output() onMouseMove = new EventEmitter<CanvasWhiteboardPoint>();
 
     constructor(private ngZone: NgZone,
         private _changeDetector: ChangeDetectorRef,
@@ -574,16 +575,8 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
                 switch (event.type) {
                     case 'mousemove':
                     case 'touchmove':
-                        // TODO show comment
                         let eventPosition: CanvasWhiteboardPoint = this._getCanvasEventPosition(event);
-                        this.showComment(eventPosition);
-                        this._commentVisible = true;
-                        break;
-                    case 'touchcancel':
-                    case 'mouseup':
-                    case 'touchend':
-                    case 'mouseout':
-                        this._commentVisible = false;
+                        this.onMouseMove.emit(eventPosition);
                 }
             }
             return;
@@ -617,7 +610,6 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
                 this._lastUUID = this._generateUUID();
                 updateType = CanvasWhiteboardUpdateType.START;
                 this._redoStack = [];
-
                 this._addCurrentShapeDataToAnUpdate(update);
                 break;
             case 'mousemove':
@@ -634,7 +626,6 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
                 this._clientDragging = false;
                 updateType = CanvasWhiteboardUpdateType.STOP;
                 this._undoStack.push(this._lastUUID);
-                this._addCommentForShape();
                 break;
         }
 
@@ -643,47 +634,9 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
         this._draw(update);
         this._prepareToSendUpdate(update);
-    }
-
-    showComment(event: CanvasWhiteboardPoint) {
-        console.log(event);
-    }
-
-    /**
-     * Opens a dialog for commenting on shape
-     * @param uuid 
-     */
-    private _addCommentForShape() {
-        let shapeType = (new this.selectedShapeConstructor()).shapeType;
-        // TODO open dialog and ask for comment
-        let comment = prompt("Enter comment");
-        // TODO save comment in comment dict where key=UUID
-        if (!this._shapeComments[this._lastUUID]) {
-            if (!this._shapeComments[this._lastUUID]) {
-                this._shapeComments[this._lastUUID] = { shapeType, commentHistory: [] }
-            }
-            this._shapeComments[this._lastUUID].commentHistory.push({
-                data: comment,
-                commentedOn: new Date()
-            });
+        if (update.type == CanvasWhiteboardUpdateType.STOP) {
+            this.onShapeDrawn.emit(this._lastUUID);
         }
-    }
-
-    /**
-     * Get comments on drawings
-     * @param onlyVisibleDrawingComments 
-     */
-    getShapeComments(onlyVisibleDrawingComments?: boolean) {
-        if (!onlyVisibleDrawingComments) {
-            return this._shapeComments;
-        }
-        let visibleShapeComments = {};
-        for (let uuid in this._shapeComments) {
-            if (this._undoStack.indexOf(uuid) > -1) {
-                visibleShapeComments[uuid] = this._shapeComments[uuid];
-            }
-        }
-        return visibleShapeComments;
     }
 
     /**
@@ -1096,13 +1049,17 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
      * @param returnedDataType
      */
     saveLocal(returnedDataType: string = "image/png"): void {
-        this.generateCanvasData((generatedData: string | Blob) => {
-            this.onSave.emit(generatedData);
+        try {
+            this.generateCanvasData((generatedData: string | Blob) => {
+                this.onSave.emit(generatedData);
 
-            if (this.shouldDownloadDrawing) {
-                this.downloadCanvasImage(returnedDataType, generatedData);
-            }
-        });
+                if (this.shouldDownloadDrawing) {
+                    this.downloadCanvasImage(returnedDataType, generatedData);
+                }
+            });
+        } catch{
+            this.onSave.emit(null);
+        }
     }
 
     private _generateDataTypeString(returnedDataType: string): string {
@@ -1171,14 +1128,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     }
 
     private _generateUUID(): string {
-        return this._random4() + this._random4() + "-" + this._random4() + "-" + this._random4() + "-" +
-            this._random4() + "-" + this._random4() + this._random4() + this._random4();
-    }
-
-    private _random4(): string {
-        return Math.floor((1 + Math.random()) * 0x10000)
-            .toString(16)
-            .substring(1);
+        return nanoid(10);
     }
 
     /**
