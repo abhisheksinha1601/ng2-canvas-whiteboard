@@ -52,9 +52,8 @@ export const DEFAULT_STYLES = `
     margin: 5px;
 }
 
-.canvas_whiteboard_button-draw_animated {
-    -webkit-animation: pulsate 1s ease-out;
-    -webkit-animation-iteration-count: infinite;
+.canvas_whiteboard_button-draw_selected {
+    background-color:white;
 }
 
 @-webkit-keyframes pulsate {

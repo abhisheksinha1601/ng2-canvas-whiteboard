@@ -73,8 +73,12 @@ export declare class CanvasWhiteboardComponent implements OnInit, AfterViewInit,
     private _registeredShapesSubscription;
     selectedShapeConstructor: INewCanvasWhiteboardShape<CanvasWhiteboardShape>;
     canvasWhiteboardShapePreviewOptions: CanvasWhiteboardShapeOptions;
-    onShapeDrawn: EventEmitter<string>;
+    onShapeDrawn: EventEmitter<{
+        uuid: string;
+        mousePoint: CanvasWhiteboardPoint;
+    }>;
     onMouseMove: EventEmitter<CanvasWhiteboardPoint>;
+    onMouseClick: EventEmitter<CanvasWhiteboardPoint>;
     constructor(ngZone: NgZone, _changeDetector: ChangeDetectorRef, _canvasWhiteboardService: CanvasWhiteboardService, _canvasWhiteboardShapeService: CanvasWhiteboardShapeService);
     /**
      * Initialize the canvas drawing context. If we have an aspect ratio set up, the canvas will resize
@@ -99,6 +103,8 @@ export declare class CanvasWhiteboardComponent implements OnInit, AfterViewInit,
      */
     private _initInputsFromOptions;
     private _isNullOrUndefined;
+    canUndo(): boolean;
+    canRedo(): boolean;
     /**
      * Init global window listeners like resize and keydown
      */

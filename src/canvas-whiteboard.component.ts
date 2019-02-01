@@ -52,23 +52,23 @@ import nanoid from "nanoid";
 
 
                 <button *ngIf="drawButtonEnabled" (click)="toggleDrawingEnabled()"
-                        [class.canvas_whiteboard_button-draw_animated]="getDrawingEnabled()"
+                        [class.canvas_whiteboard_button-draw_selected]="getDrawingEnabled()"
                         class="canvas_whiteboard_button canvas_whiteboard_button-draw" type="button">
                     <i [class]="drawButtonClass" aria-hidden="true">{{drawButtonText}}</i> 
                 </button>
 
                 <button *ngIf="clearButtonEnabled" (click)="clearCanvasLocal()" type="button"
-                        class="canvas_whiteboard_button canvas_whiteboard_button-clear">
+                        class="canvas_whiteboard_button canvas_whiteboard_button-clear" [disabled]="!canUndo() && !canRedo()">
                     <i [class]="clearButtonClass" aria-hidden="true">{{clearButtonText}}</i> 
                 </button>
 
                 <button *ngIf="undoButtonEnabled" (click)="undoLocal()" type="button"
-                        class="canvas_whiteboard_button canvas_whiteboard_button-undo">
+                        class="canvas_whiteboard_button canvas_whiteboard_button-undo" [disabled]="!canUndo()">
                     <i [class]="undoButtonClass" aria-hidden="true">{{undoButtonText}}</i> 
                 </button>
 
                 <button *ngIf="redoButtonEnabled" (click)="redoLocal()" type="button"
-                        class="canvas_whiteboard_button canvas_whiteboard_button-redo">
+                        class="canvas_whiteboard_button canvas_whiteboard_button-redo" [disabled]="!canRedo()">
                     <i [class]="redoButtonClass" aria-hidden="true">{{redoButtonText}}</i> 
                 </button>
                 <button *ngIf="saveDataButtonEnabled" (click)="saveLocal()" type="button"
@@ -174,8 +174,9 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
     selectedShapeConstructor: INewCanvasWhiteboardShape<CanvasWhiteboardShape>;
     canvasWhiteboardShapePreviewOptions: CanvasWhiteboardShapeOptions;
 
-    @Output() onShapeDrawn = new EventEmitter<string>();
+    @Output() onShapeDrawn = new EventEmitter<{ uuid: string, mousePoint: CanvasWhiteboardPoint }>();
     @Output() onMouseMove = new EventEmitter<CanvasWhiteboardPoint>();
+    @Output() onMouseClick = new EventEmitter<CanvasWhiteboardPoint>();
 
     constructor(private ngZone: NgZone,
         private _changeDetector: ChangeDetectorRef,
@@ -263,6 +264,14 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
 
     private _isNullOrUndefined(property: any): boolean {
         return property === null || property === undefined;
+    }
+
+    canUndo(): boolean {
+        return this._undoStack.length ? true : false;
+    }
+
+    canRedo(): boolean {
+        return this._redoStack.length ? true : false;
     }
 
     /**
@@ -572,10 +581,17 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
         //Ignore all if we didn't click the _draw! button or the image did not load
         if (!this.drawingEnabled || !this._canDraw) {
             if (!this.drawingEnabled && !this._clientDragging) {
+                let eventPosition: CanvasWhiteboardPoint = this._getCanvasEventPosition(event);
                 switch (event.type) {
+                    case 'mousedown':
+                    case 'touchstart':
+                    case 'touchcancel':
+                    case 'mouseup':
+                    case 'touchend':
+                        this.onMouseClick.emit(eventPosition);
+                        return;
                     case 'mousemove':
                     case 'touchmove':
-                        let eventPosition: CanvasWhiteboardPoint = this._getCanvasEventPosition(event);
                         this.onMouseMove.emit(eventPosition);
                 }
             }
@@ -635,7 +651,7 @@ export class CanvasWhiteboardComponent implements OnInit, AfterViewInit, OnChang
         this._draw(update);
         this._prepareToSendUpdate(update);
         if (update.type == CanvasWhiteboardUpdateType.STOP) {
-            this.onShapeDrawn.emit(this._lastUUID);
+            this.onShapeDrawn.emit({ uuid: this._lastUUID, mousePoint: eventPosition });
         }
     }
 
